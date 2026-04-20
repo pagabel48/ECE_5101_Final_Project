@@ -7,6 +7,12 @@ function p = params()
     p.M               = 4;
     p.bitsPerSymbol   = log2(p.M);
 
+    % Ka Band
+    p.BW                = 20e6; % ka band bandwidth
+    p.dt                = 1/p.BW;          % sampling time (baseband)
+    p.fc                = 30e9;            % Ka-band (30 GHz)
+
+
     %  Preamble
     p.preambleLen     = 64;
     p.useRepeatedPreamble = true;

@@ -1,0 +1,7 @@
+clc; clear; close all;
+
+p = params();
+
+subcarriers []
+
+% Test Ka band
