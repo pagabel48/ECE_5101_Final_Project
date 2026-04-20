@@ -2,16 +2,14 @@ clc; clear; close all;
 
 P = params();
 
-
-
 % returns doppler shift vector based on realistic orbit/ground station
 % N  = number of samples
 % P = params
-fd = generateKaOFDMChannel(P.numDataBits, P);
+fd = generatechannel(P.numDataBits, P);
 plot(real(fd)); grid on;
 title("Ka-band Doppler + Channel Phase Response");
 
-function h = generateKaOFDMChannel(N, P)
+function h = generatechannel(N, P)
 
     c  = 3e8;
     Re = 6371e3;

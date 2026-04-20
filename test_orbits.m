@@ -1,42 +1,62 @@
 clc; clear; close all;
 
+
 p = params();
 
-subcarriers []
+snrVec = 5:5:30;
+numSNR = length(snrVec);
 
-% Test Ka band
-[txSignal, txBits, txMatrix, preamble] = ofdm_tx(p);
+oneShot = zeros(numSNR, 100);
 
-oneShot = zeroes(6, )
+for s = 1:numSNR
 
-% vary SNR from 5 to 30 db
+    snr = snrVec(s);
 
-for snr = 5 : 5 : 30
+    for i = 1:100
 
-% take 100 samples of procedural satellites
-for i = 1:100
-    [txSignal, txBits, txMatrix, preamble] = ofdm_tx(p);
+        % -----------------------------
+        % TX
+        % -----------------------------
+        [txSignal, txBits, txMatrix, preamble] = ofdm_tx(p);
 
-    n = (0:length(txSignal)-1).';
+        Nsig = length(txSignal);
 
-    % time-varying Doppler (Hz per sample)
-    fd = p.fd;   % must be a vector same length as txSignal
+        % -----------------------------
+        % KA-BAND CHANNEL (DOPPLER)
+        % -----------------------------
+        h = generatechannel(Nsig, p);
 
-    Ts = 1 / p.fs;   % sampling period (IMPORTANT: use real fs)
+        txSignalChan = txSignal .* h;
 
-    % accumulate phase from instantaneous Doppler
-    phase = 2*pi * cumsum(fd) * Ts;
+        % -----------------------------
+        % AWGN
+        % -----------------------------
+        sigPower = mean(abs(txSignalChan).^2);
+        snrLin = 10^(snr/10);
+        noisePower = sigPower / snrLin;
 
-    txSignalDoppler = txSignal .* exp(1j * phase);
+        noise = sqrt(noisePower/2) * ...
+            (randn(size(txSignalChan)) + 1j*randn(size(txSignalChan)));
 
-    signalPower = mean(abs(txSignalDoppler).^2);
-    snrLinear = 10^(snr/10);
-    noisePower = signalPower / snrLinear;
+        rxSignal = txSignalChan + noise;
 
-    noise = sqrt(noisePower/2) * ...
-        (randn(size(txSignalDoppler)) + 1j*randn(size(txSignalDoppler)));
+        % -----------------------------
+        % RX
+        % -----------------------------
+        [rxBits, ~, ~, ~] = method_one_shot(rxSignal, p);
 
-    rxSignal = txSignalDoppler + noise;
+        % BER
+        numErr = sum(txBits ~= rxBits);
+        oneShot(s, i) = numErr / length(txBits);
 
+    end
 end
-end
+
+% -----------------------------
+% Plot BER vs SNR
+% -----------------------------
+plot(snrVec, mean(oneShot,2), 'o-');
+grid on;
+xlabel('SNR (dB)');
+ylabel('BER');
+title('One-shot OFDM under Ka-band Doppler');

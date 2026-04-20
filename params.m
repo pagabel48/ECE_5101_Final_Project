@@ -8,7 +8,7 @@ function p = params()
     p.bitsPerSymbol   = log2(p.M);
 
     % Ka Band
-    p.BW                = 20e6; % ka band bandwidth
+    p.BW                = 20e6;            % ka band bandwidth
     p.dt                = 1/p.BW;          % sampling time (baseband)
     p.fc                = 30e9;            % Ka-band (30 GHz)
 
