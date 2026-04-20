@@ -1,0 +1,41 @@
+function p = params()
+%PARAMS  Parameters for OFDM Doppler compensation project
+    %  OFDM system parameters
+    p.N               = 64;      % number of subcarriers
+    p.cpLen           = 16;      % cyclic prefix length
+    p.numSymbols      = 100;     % number of OFDM data symbols per frame
+    p.M               = 4;       % modulation order (4 = QPSK)
+    p.bitsPerSymbol   = log2(p.M);
+
+    %  Preamble / training
+    p.preambleLen     = 64;      % length of one repeated preamble block
+    p.useRepeatedPreamble = true;
+    p.numPreambleRepeats  = 2;   % repeated structure for one-shot estimation
+
+    %  Channel / noise
+    p.snr_dB          = 20;      % default SNR
+    p.channelType     = 'awgn';  % 'awgn' or later 'multipath'
+
+    %  Doppler / CFO settings
+    p.dopplerMode     = 'constant'; 
+
+    % Normalized Doppler / CFO parameters
+    p.epsilon0        = 0.05;    % initial normalized frequency offset
+    p.epsilonSlope    = 1e-4;    % slope for linear/ time-varying cases
+    p.epsilonNoiseStd = 0.0;     % optional small random fluctuation
+
+    %  Periodic update settings
+    p.updateInterval  = 5;       % update every K OFDM symbols
+    p.historyLength   = 5;       % how many past estimates to keep
+    p.tweakMode       = 'moving_average';
+
+    %  Simulation options
+    p.randomSeed      = 42;
+    p.plotConstellation = true;
+    p.verbose         = true;
+
+    %  Derived quantities
+    p.numDataBits = p.N * p.numSymbols * p.bitsPerSymbol;
+    p.symbolLen   = p.N + p.cpLen;   % time-domain samples per OFDM symbol (with CP)
+
+end
