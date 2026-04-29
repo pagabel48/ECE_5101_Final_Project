@@ -21,7 +21,7 @@ function h = generatechannel(N, P)
     lambda = c / fc;
 
     % LEO orbit
-    altitude = 500e3 + 400e3*rand();
+    altitude = 400e3 + 600e3*rand();
     r = Re + altitude;
 
     v = sqrt(mu / r);
