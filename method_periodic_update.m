@@ -44,6 +44,14 @@ function [rxBits, rxSymbols, rxMatrix, epsilon_hat, phaseHist] = method_periodic
     rxBits(2:2:end) = imag(rxSymbols) > 0;
 end
 
+function x_dec = qpsk_slicer(y)
+    x_dec = sign(real(y)) + 1j * sign(imag(y));
+    x_dec = x_dec / sqrt(2);
+
+    x_dec(real(x_dec) == 0) = 1/sqrt(2) + 1j*imag(x_dec(real(x_dec) == 0));
+    x_dec(imag(x_dec) == 0) = real(x_dec(imag(x_dec) == 0)) + 1j/sqrt(2);
+end
+
 function epsilon_hat = estimate_doppler_from_preamble(rxPreamble, p)
     L = p.preambleLen;
 
@@ -54,12 +62,4 @@ function epsilon_hat = estimate_doppler_from_preamble(rxPreamble, p)
     phi = angle(P);
 
     epsilon_hat = phi * p.N / (2*pi*L);
-end
-
-function x_dec = qpsk_slicer(y)
-    x_dec = sign(real(y)) + 1j * sign(imag(y));
-    x_dec = x_dec / sqrt(2);
-
-    x_dec(real(x_dec) == 0) = 1/sqrt(2) + 1j*imag(x_dec(real(x_dec) == 0));
-    x_dec(imag(x_dec) == 0) = real(x_dec(imag(x_dec) == 0)) + 1j/sqrt(2);
 end
