@@ -1,0 +1,109 @@
+function [rxSignalTweak, est] = method_tweak(rxSignal, p)
+% Tweaked method: Periodic Update + Kalman filter on phase history
+% Key idea: treat accumulated phase as a state, use Kalman to weigh
+% decision-directed measurements against a smooth drift model.
+% When decisions are unreliable (LEO fast drift), Kalman down-weights
+% bad measurements and trusts the trend instead.
+
+    rxSignal = rxSignal(:);
+    sigLen   = length(rxSignal);
+    symLen   = p.N + p.cpLen;
+
+    preambleSamples = 0;
+    if p.useRepeatedPreamble
+        preambleSamples = p.preambleLen * p.numPreambleRepeats;
+    end
+    payloadStart = preambleSamples + 1;
+
+    % coarse estimate from preamble
+    rxPreamble    = rxSignal(1:preambleSamples);
+    epsilonCoarse = estimate_doppler_from_preamble(rxPreamble, p);
+
+    % initial coarse compensation
+    rxCoarse = compensate_signal(rxSignal, epsilonCoarse, p);
+    rxData   = rxCoarse(payloadStart:end);
+    rxCP     = reshape(rxData, symLen, p.numSymbols);
+    rxNoCP   = rxCP(p.cpLen+1:end, :);
+
+    %% Kalman parameters
+    % Q: how fast epsilon drifts between symbols (larger = trust measurements more)
+    % R: how noisy the decision-directed measurement is (larger = trust model more)
+    Q = 1e-4;
+    R = 0.08;
+
+    %% Run symbol-by-symbol with Kalman filter
+    K         = p.updateInterval;
+    phaseComp = 0;      % running compensation phase (applied to signal)
+    phi_state = 0;      % Kalman state: residual phase
+    P         = 0.1;    % initial error covariance
+
+    % record phase at each symbol for interpolation
+    phaseAtSym  = zeros(p.numSymbols, 1);
+    sampleAtSym = zeros(p.numSymbols, 1);
+
+    for m = 1:p.numSymbols
+
+        % Kalman predict
+        phi_pred = phi_state;
+        P_pred   = P + Q;
+
+        % decision-directed measurement every K symbols
+        if mod(m-1, K) == 0
+            y      = fft(rxNoCP(:, m), p.N);
+            y_corr = y * exp(-1j * phaseComp);
+
+            x_dec    = qpsk_slicer(y_corr);
+            phi_meas = angle(sum(y_corr .* conj(x_dec)));
+
+            % Kalman update: bad measurements get down-weighted automatically
+            K_gain    = P_pred / (P_pred + R);
+            phi_state = phi_pred + K_gain * phi_meas;
+            P         = (1 - K_gain) * P_pred;
+
+            % apply Kalman-weighted correction (not raw phi_meas)
+            phaseComp = phaseComp + K_gain * phi_meas;
+        else
+            phi_state = phi_pred;
+            P         = P_pred;
+        end
+
+        phaseAtSym(m)  = phaseComp;
+        sampleAtSym(m) = payloadStart + (m-1)*symLen + round(symLen/2);
+    end
+
+    %% Interpolate symbol-level phase to every sample
+    sampleAxis     = (1:sigLen).';
+    phasePerSample = interp1(sampleAtSym, phaseAtSym, sampleAxis, ...
+                             'linear', 'extrap');
+    phasePerSample(1:preambleSamples) = 0;
+
+    %% Combine coarse epsilon + Kalman-smoothed residual phase
+    n          = (0:sigLen-1).';
+    totalPhase = 2*pi * epsilonCoarse * n / p.N + phasePerSample;
+
+    rxSignalTweak = rxSignal .* exp(-1j * totalPhase);
+
+    %% Debug info
+    est.epsilonCoarse     = epsilonCoarse;
+    est.epsilonRefined    = epsilonCoarse;
+    est.epsilonApproxMean = epsilonCoarse;
+    est.phaseAtSym        = phaseAtSym;
+    est.phasePerSample    = phasePerSample;
+    est.kalman_Q          = Q;
+    est.kalman_R          = R;
+    est.epsilonGrid       = [];
+    est.score             = [];
+end
+
+%% local functions
+function x_dec = qpsk_slicer(y)
+    x_dec = (sign(real(y)) + 1j*sign(imag(y))) / sqrt(2);
+end
+
+function epsilon_hat = estimate_doppler_from_preamble(rxPreamble, p)
+    L  = p.preambleLen;
+    r1 = rxPreamble(1:L);
+    r2 = rxPreamble(L+1:2*L);
+    P  = sum(r2 .* conj(r1));
+    epsilon_hat = angle(P) * p.N / (2*pi*L);
+end

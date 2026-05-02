@@ -1,47 +1,44 @@
 function p = params()
-%PARAMS  Parameters for OFDM Doppler compensation project
-    %  OFDM system parameters
-    p.N               = 64; 
-    p.cpLen           = 16;
-    p.numSymbols      = 100;
-    p.M               = 4;
-    p.bitsPerSymbol   = log2(p.M);
+% system parameters
 
-    % Ka Band
-    p.BW                = 20e6;            % ka band bandwidth
-    p.dt                = 1/p.BW;          % sampling time (baseband)
-    p.fc                = 30e9;            % Ka-band (30 GHz)
+% OFDM
+p.N            = 64;
+p.cpLen        = 16;
+p.numSymbols   = 100;
+p.M            = 4;
+p.bitsPerSymbol = log2(p.M);
 
+% preamble
+p.preambleLen        = 64;
+p.useRepeatedPreamble = true;
+p.numPreambleRepeats  = 2;
 
-    %  Preamble
-    p.preambleLen     = 64;
-    p.useRepeatedPreamble = true;
-    p.numPreambleRepeats  = 2;
+% channel / noise
+p.snr_dB     = 20;
+p.channelType = 'awgn';
 
-    %  Channel
-    p.snr_dB          = 20;
-    p.channelType     = 'awgn'; 
+% Doppler
+p.epsilon0        = 0.05;
+p.epsilonSlope    = 1e-4;
+p.epsilonNoiseStd = 0.0;
 
-    %  Doppler
-    p.dopplerMode     = 'constant'; 
+% periodic update interval
+p.updateInterval = 5;
+p.historyLength  = 5;
+p.tweakMode      = 'moving_average';
 
-    % Normalized Doppler
-    p.epsilon0        = 0.05;    % initial normalized frequency offset
-    p.epsilonSlope    = 1e-4;    % slope for linear/ time-varying cases
-    p.epsilonNoiseStd = 0.0;     % optional small random fluctuation
+p.randomSeed        = 42;
+p.plotConstellation = true;
+p.verbose           = true;
 
-    %  Periodic update settings
-    p.updateInterval  = 5;       % update every K OFDM symbols
-    p.historyLength   = 5;       % how many past estimates to keep
-    p.tweakMode       = 'moving_average';
+% derived
+p.numDataBits = p.N * p.numSymbols * p.bitsPerSymbol;
+p.symbolLen   = p.N + p.cpLen;
 
-    %  Simulation options
-    p.randomSeed      = 42;
-    p.plotConstellation = true;
-    p.verbose         = true;
-
-    %  Derived quantities
-    p.numDataBits = p.N * p.numSymbols * p.bitsPerSymbol;
-    p.symbolLen   = p.N + p.cpLen;   % time-domain samples per OFDM symbol
+% GEO-like Doppler profile (used in main_geo.m)
+p.channelMode    = 'geo_like_slow';
+p.epsilon_dc     = 0.03;
+p.epsilon_amp    = 0.008;
+p.epsilon_cycles = 0.3;
 
 end
